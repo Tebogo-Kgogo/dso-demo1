@@ -8,25 +8,26 @@ pipeline {
     environment {
         DOCKER_REGISTRY = 'docker.io/xxxxxx'
         IMAGE_NAME = 'dso-demo'
+        NVD_API_KEY = '<YOUR_NVD_API_KEY>'  // Inject your NVD API key here
     }
     stages {
         stage('Build') {
-            container('maven') {
-                steps {
+            steps {
+                container('maven') {
                     sh 'mvn clean package'
                 }
             }
         }
         stage('Dependency Check') {
-            container('maven') {
-                steps {
+            steps {
+                container('maven') {
                     sh 'mvn org.owasp:dependency-check-maven:6.1.1:check'
                 }
             }
         }
         stage('Build Docker Image') {
-            container('kaniko') {
-                steps {
+            steps {
+                container('kaniko') {
                     sh '''
                     /kaniko/executor \
                         -f $WORKSPACE/Dockerfile \
