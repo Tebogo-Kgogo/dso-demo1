@@ -20,8 +20,8 @@ spec:
         - cat
       tty: true
       volumeMounts:
-        - mountPath: /tmp/trivycache/
-          name: trivycache
+        - name: trivycache
+          mountPath: /tmp/trivycache/
       # ⚠️ removed docker socket mount
 
     - name: trufflehog
@@ -42,11 +42,12 @@ spec:
 
     - name: trivycache
       emptyDir: {}
-    -name: jenkins-docker-cfg
-     projected:
-       sources:
-       - secret:
-           name: regcred
-           items:
-             - key: .dockerconfigjson
-               path: config.json
+
+    - name: jenkins-docker-cfg
+      projected:
+        sources:
+          - secret:
+              name: regcred
+              items:
+                - key: .dockerconfigjson
+                  path: config.json
