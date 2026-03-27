@@ -1,216 +1,70 @@
 pipeline {
-  agent {
-    kubernetes {
-      yamlFile 'build-agent.yaml'
-      defaultContainer 'maven'
-      idleMinutes 1
+    agent {
+        kubernetes {
+            yamlFile 'build-agent.yaml'
+            defaultContainer 'maven'
+            idleMinutes 1
+        }
     }
 
-  }
-  stages {
-    stage('Build') {
-      parallel {
-        stage('Compile') {
-pipeline {
-  agent {
-    kubernetes {
-      yamlFile 'build-agent.yaml'
-      defaultContainer 'maven'
-      idleMinutes 1
-    }
-  }
+    stages {
 
-  stages {
-
-    stage('Build') {
-      parallel {
-        stage('Compile') {
-          steps {
-            container('maven') {
-              sh 'mvn compile'
+        stage('Build') {
+            parallel {
+                stage('Compile') {
+                    steps {
+                        container('maven') {
+                            sh 'mvn compile'
+                        }
+                    }
+                }
             }
-          }
         }
-      }
-    }
 
-    stage('Test') {
-      parallel {
-        stage('Unit Tests') {
-          steps {
-            container('maven') {
-              sh 'mvn test'
+        stage('Test') {
+            parallel {
+                stage('Unit Tests') {
+                    steps {
+                        container('maven') {
+                            sh 'mvn test'
+                        }
+                    }
+                }
             }
-          }
         }
-      }
-    }
 
-    stage('Package') {
-      parallel {
-        stage('Create Jarfile') {
-          steps {
-            container('maven') {
-              sh 'mvn package -DskipTests'
+        stage('Package') {
+            parallel {
+                stage('Create Jarfile') {
+                    steps {
+                        container('maven') {
+                            sh 'mvn package -DskipTests'
+                        }
+                    }
+                }
+
+                stage('Docker BnP') {
+                    steps {
+                        container('kaniko') {
+                            sh '''
+                            /kaniko/executor \
+                              -f $(pwd)/Dockerfile \
+                              -c $(pwd) \
+                              --insecure \
+                              --skip-tls-verify \
+                              --cache=true \
+                              --destination=docker.io/xxxxxx/dso-demo
+                            '''
+                        }
+                    }
+                }
             }
-          }
         }
 
-        stage('Docker BnP') {
-          steps {
-            container('kaniko') {
-              sh '''
-              /kaniko/executor \
-                -f $(pwd)/Dockerfile \
-                -c $(pwd) \
-                --insecure \
-                --skip-tls-verify \
-                --cache=true \
-                --destination=docker.io/xxxxxx/dso-demo
-              '''
+        stage('Deploy to Dev') {
+            steps {
+                sh 'echo done'
             }
-          }
         }
-      }
     }
-
-    stage('Deploy to Dev') {
-      steps {
-        sh 'echo done'
-      }
-    }
-
-  }
-}          steps {
-            container(name: 'maven') {
-              sh 'mvn compile'
-            }
-
-          }
-        }
-
-      }
-    }
-
-    stage('Test') {
-      parallel {
-        stage('Unit Tests') {
-          steps {
-            container(name: 'maven') {
-              sh 'mvn test'
-            }
-
-          }
-        }
-
-      }
-    }
-
-    stage('Package') {
-      parallel {
-        stage('Create Jarfile') {
-          steps {
-            container(name: 'maven') {
-              sh 'mvn package -DskipTests'
-            }
-
-          }
-        }
-	stage('Docker BnP') {
- 	  steps {
- 	    container('kaniko') {
- 	      sh '/kaniko/executor -f `pwd`/Dockerfile -c `pwd` --insecure --skip-tls-verify --cache=true --destination=docker.io/xxxxxx/dso-demo'
- 	    }
- 	  }
-        }
-      }
-
-      stage('Deploy to Dev') {
-        steps {
-        sh 'echo done'
-      }
-    }
-
-  }
-}
-    stage('Deploy to Dev') {
-      steps {
-        sh 'echo done'
-      }
-    }
-
-  }  // closes stages
-}    // closes pipeline
-pipeline {
-  agent {
-    kubernetes {
-      yamlFile 'build-agent.yaml'
-      defaultContainer 'maven'
-      idleMinutes 1
-    }
-  }
-
-  stages {
-
-    stage('Build') {
-      parallel {
-        stage('Compile') {
-          steps {
-            container('maven') {
-              sh 'mvn compile'
-            }
-          }
-        }
-      }
-    }
-
-    stage('Test') {
-      parallel {
-        stage('Unit Tests') {
-          steps {
-            container('maven') {
-              sh 'mvn test'
-            }
-          }
-        }
-      }
-    }
-
-    stage('Package') {
-      parallel {
-
-        stage('Create Jarfile') {
-          steps {
-            container('maven') {
-              sh 'mvn package -DskipTests'
-            }
-          }
-        }
-
-        stage('Docker BnP') {
-          steps {
-            container('kaniko') {
-              sh '''
-              /kaniko/executor \
-                -f $(pwd)/Dockerfile \
-                -c $(pwd) \
-                --insecure \
-                --skip-tls-verify \
-                --cache=true \
-                --destination=docker.io/xxxxxx/dso-demo
-              '''
-            }
-          }
-        }
-
-      }
-    }
-
-    stage('Deploy to Dev') {
-      steps {
-        sh 'echo done'
-      }
-    }
-
-  }
 }
