@@ -1,46 +1,73 @@
 pipeline {
-    agent {
-        kubernetes {
-            yamlFile 'build-agent.yaml'  // your pod template file
+  agent {
+    kubernetes {
+      yamlFile 'build-agent.yaml'
+      defaultContainer 'maven'
+      idleMinutes 1
+    }
+  }
+
+  stages {
+
+    stage('Build') {
+      parallel {
+        stage('Compile') {
+          steps {
+            container('maven') {
+              sh 'mvn compile'
+            }
+          }
         }
+      }
     }
 
-    environment {
-        NVD_API_KEY = credentials('nvd-api-key') // store your NVD API key in Jenkins credentials
+    stage('Test') {
+      parallel {
+        stage('Unit Tests') {
+          steps {
+            container('maven') {
+              sh 'mvn test'
+            }
+          }
+        }
+      }
     }
 
-    stages {
-        stage('Build') {
-            steps {
-                container('maven') {
-                    sh 'mvn clean install -B'
-                }
+    stage('Package') {
+      parallel {
+
+        stage('Create Jarfile') {
+          steps {
+            container('maven') {
+              sh 'mvn package -DskipTests'
             }
+          }
         }
 
-        stage('Dependency Check') {
-            steps {
-                container('maven') {
-                    sh '''
-                        mvn org.owasp:dependency-check-maven:6.1.1:check \
-                            -Dnvd.apiKey=$NVD_API_KEY
-                    '''
-                }
+        stage('Docker BnP') {
+          steps {
+            container('kaniko') {
+              sh '''
+              /kaniko/executor \
+                -f $(pwd)/Dockerfile \
+                -c $(pwd) \
+                --insecure \
+                --skip-tls-verify \
+                --cache=true \
+                --destination=docker.io/xxxxxx/dso-demo
+              '''
             }
+          }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                container('kaniko') {
-                    sh '''
-                        /kaniko/executor \
-                        -f /home/jenkins/agent/workspace/${JOB_NAME}/Dockerfile \
-                        -c /home/jenkins/agent/workspace/${JOB_NAME} \
-                        --destination=docker.io/xxxxxx/dso-demo \
-                        --cache=true
-                    '''
-                }
-            }
-        }
+      }
     }
+
+    stage('Deploy to Dev') {
+      steps {
+        sh 'echo done'
+      }
+    }
+
+  }
 }
