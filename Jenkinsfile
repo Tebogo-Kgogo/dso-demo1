@@ -2,46 +2,43 @@ pipeline {
     agent {
         kubernetes {
             yamlFile 'build-agent.yaml'
+            defaultContainer 'maven'
         }
     }
-
     environment {
-        IMAGE_NAME = "docker.io/xxxxxx/dso-demo"
-        DOCKERFILE_PATH = "${WORKSPACE}/Dockerfile"
-        CONTEXT_DIR = "${WORKSPACE}"
+        DOCKER_REGISTRY = 'docker.io/xxxxxx'
+        IMAGE_NAME = 'dso-demo'
     }
-
     stages {
-
-        stage('Build with Maven') {
-            steps {
-                container('maven') {
-                    sh 'mvn clean install'
+        stage('Build') {
+            container('maven') {
+                steps {
+                    sh 'mvn clean package'
                 }
             }
         }
-
-        stage('Build Docker Image with Kaniko') {
-            steps {
-                container('kaniko') {
-                    sh """
-                    /kaniko/executor \\
-                        -f ${DOCKERFILE_PATH} \\
-                        -c ${CONTEXT_DIR} \\
-                        --insecure \\
-                        --skip-tls-verify \\
-                        --cache=true \\
-                        --destination=${IMAGE_NAME}
-                    """
+        stage('Dependency Check') {
+            container('maven') {
+                steps {
+                    sh 'mvn org.owasp:dependency-check-maven:6.1.1:check'
                 }
             }
         }
-
-        stage('Post-build cleanup') {
-            steps {
-                echo "Build complete. Image pushed to ${IMAGE_NAME}"
+        stage('Build Docker Image') {
+            container('kaniko') {
+                steps {
+                    sh '''
+                    /kaniko/executor \
+                        -f $WORKSPACE/Dockerfile \
+                        -c $WORKSPACE \
+                        --insecure \
+                        --skip-tls-verify \
+                        --cache=true \
+                        --destination=$DOCKER_REGISTRY/$IMAGE_NAME \
+                        --force
+                    '''
+                }
             }
         }
-
     }
 }
